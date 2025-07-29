@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/url"
@@ -16,31 +15,16 @@ import (
 	"time"
 )
 
-type Token struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int64  `json:"expires_in"`
-}
-
-type Credentials struct {
-	Code        string
-	RedirectURI string
-	Subdomain   string
-	Client      string
-	Secret      string
-}
-
 /**
  * TODO: write tests and make it mockable
 **/
-func Auth(c *Credentials) (*Token, error) {
+func authorize(c *Credentials, client HTTPClient) (*Token, error) {
 	codeChan := make(chan string, 1)
 	c.RedirectURI = "http://localhost:8080/callback"
 
 	listener, err := net.Listen("tcp", "localhost:8080")
 	if err != nil {
-		return nil, fmt.Errorf("failed to bind listener: %w", err)
+		return nil, err
 	}
 
 	mux := http.NewServeMux()
@@ -56,10 +40,12 @@ func Auth(c *Credentials) (*Token, error) {
 
 	srv := &http.Server{Handler: mux}
 
-	go func() {
+	go func() error {
 		if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
-			log.Printf("OAuth server error: %v", err)
+			return err
 		}
+
+		return nil
 	}()
 
 	browserAuth(c)
@@ -70,7 +56,7 @@ func Auth(c *Credentials) (*Token, error) {
 		defer cancel()
 		_ = srv.Shutdown(ctx)
 		c.Code = code
-		return authorize(c)
+		return step2(c, client)
 	case <-time.After(120 * time.Second):
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -95,7 +81,7 @@ func browserAuth(c *Credentials) {
 	}
 }
 
-func authorize(c *Credentials) (*Token, error) {
+func step2(c *Credentials, client HTTPClient) (*Token, error) {
 
 	tokenURL := "https://api.ccbchurch.com/oauth/token"
 
@@ -113,7 +99,6 @@ func authorize(c *Credentials) (*Token, error) {
 	req.SetBasicAuth(c.Client, c.Secret)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("token request failed: %w", err)
@@ -163,7 +148,7 @@ func isAuthorized(t *Token) bool {
 /**
  * TODO: write tests and make it mockable
 **/
-func refresh(t *Token, c *Credentials) error {
+func refresh(t *Token, c *Credentials, client HTTPClient) error {
 
 	data := url.Values{}
 	data.Set("grant_type", "refresh_token")
@@ -177,7 +162,7 @@ func refresh(t *Token, c *Credentials) error {
 	req.Header.Set("Accept", "application/vnd.ccbchurch.v2+json")
 	req.SetBasicAuth(c.Client, c.Secret)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}

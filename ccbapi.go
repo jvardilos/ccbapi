@@ -9,10 +9,10 @@ import (
 /**
  * TODO: write tests and make it mockable
 **/
-func Call(method, query string, t *Token, c *Credentials) ([]byte, error) {
+func call(method, query string, t *Token, c *Credentials, client HTTPClient) ([]byte, error) {
 
 	if !isAuthorized(t) {
-		if err := refresh(t, c); err != nil {
+		if err := refresh(t, c, client); err != nil {
 			return nil, err
 		}
 	}
@@ -25,7 +25,7 @@ func Call(method, query string, t *Token, c *Credentials) ([]byte, error) {
 	req.Header.Set("Authorization", "Bearer "+t.AccessToken)
 	req.Header.Set("Accept", "application/vnd.ccbchurch.v2+json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
