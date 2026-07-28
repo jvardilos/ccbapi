@@ -10,6 +10,7 @@ import (
  * TODO: write tests and make it mockable
 **/
 func call(method, query string, t *Token, c *Credentials, client HTTPClient) ([]byte, error) {
+	logger.Debug("calling ccb api", "method", method, "query", query)
 
 	if !isAuthorized(t) {
 		if err := refresh(t, c, client); err != nil {
@@ -27,6 +28,7 @@ func call(method, query string, t *Token, c *Credentials, client HTTPClient) ([]
 
 	resp, err := client.Do(req)
 	if err != nil {
+		logger.Error("ccb api request failed", "error", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -37,6 +39,7 @@ func call(method, query string, t *Token, c *Credentials, client HTTPClient) ([]
 	}
 
 	if resp.StatusCode != 200 {
+		logger.Error("ccb api request rejected", "status", resp.Status, "query", query)
 		return nil, fmt.Errorf("status: %s, body %s", resp.Status, body)
 	}
 
