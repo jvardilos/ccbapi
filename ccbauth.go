@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os/exec"
 	"runtime"
-	"strings"
 	"time"
 )
 
@@ -85,19 +84,24 @@ func step2(c *Credentials, client HTTPClient) (*Token, error) {
 
 	tokenURL := "https://api.ccbchurch.com/oauth/token"
 
-	form := url.Values{}
-	form.Set("grant_type", "authorization_code")
-	form.Set("code", c.Code)
-	form.Set("redirect_uri", c.RedirectURI)
-	form.Set("subdomain", c.Subdomain)
+	body, err := json.Marshal(map[string]string{
+		"grant_type":    "authorization_code",
+		"subdomain":     c.Subdomain,
+		"client_id":     c.Client,
+		"client_secret": c.Secret,
+		"code":          c.Code,
+		"redirect_uri":  c.RedirectURI,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode token request: %w", err)
+	}
 
-	req, err := http.NewRequest("POST", tokenURL, bytes.NewBufferString(form.Encode()))
+	req, err := http.NewRequest("POST", tokenURL, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create token request: %w", err)
 	}
 
-	req.SetBasicAuth(c.Client, c.Secret)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -150,24 +154,29 @@ func isAuthorized(t *Token) bool {
 **/
 func refresh(t *Token, c *Credentials, client HTTPClient) error {
 
-	data := url.Values{}
-	data.Set("grant_type", "refresh_token")
-	data.Set("refresh_token", t.RefreshToken)
+	body, err := json.Marshal(map[string]string{
+		"grant_type":    "refresh_token",
+		"subdomain":     c.Subdomain,
+		"client_id":     c.Client,
+		"client_secret": c.Secret,
+		"refresh_token": t.RefreshToken,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to encode refresh request: %w", err)
+	}
 
-	req, err := http.NewRequest("POST", "https://api.ccbchurch.com/oauth/token", strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", "https://api.ccbchurch.com/oauth/token", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/vnd.ccbchurch.v2+json")
-	req.SetBasicAuth(c.Client, c.Secret)
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("reading response body: %w", err)
 	}
@@ -175,11 +184,11 @@ func refresh(t *Token, c *Credentials, client HTTPClient) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("token refresh failed: %s %w", body, err)
+		return fmt.Errorf("token refresh failed: %s", respBody)
 	}
 
 	var raw Token
-	if err := json.Unmarshal(body, &raw); err != nil {
+	if err := json.Unmarshal(respBody, &raw); err != nil {
 		return fmt.Errorf("decoding refresh response: %w", err)
 	}
 
