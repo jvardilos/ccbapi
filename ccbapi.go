@@ -9,7 +9,7 @@ import (
 /**
  * TODO: write tests and make it mockable
 **/
-func call(method, query string, t *Token, c *Credentials, client HTTPClient) ([]byte, error) {
+func call(method, query string, body io.Reader, t *Token, c *Credentials, client HTTPClient) ([]byte, error) {
 	logger.Debug("calling ccb api", "method", method, "query", query)
 
 	if !isAuthorized(t) {
@@ -18,13 +18,16 @@ func call(method, query string, t *Token, c *Credentials, client HTTPClient) ([]
 		}
 	}
 
-	req, err := http.NewRequest(method, "https://api.ccbchurch.com/"+query, nil)
+	req, err := http.NewRequest(method, "https://api.ccbchurch.com/"+query, body)
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Set("Authorization", "Bearer "+t.AccessToken)
 	req.Header.Set("Accept", "application/vnd.ccbchurch.v2+json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -33,15 +36,15 @@ func call(method, query string, t *Token, c *Credentials, client HTTPClient) ([]
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
 		logger.Error("ccb api request rejected", "status", resp.Status, "query", query)
-		return nil, fmt.Errorf("status: %s, body %s", resp.Status, body)
+		return nil, fmt.Errorf("status: %s, body %s", resp.Status, respBody)
 	}
 
-	return body, nil
+	return respBody, nil
 }

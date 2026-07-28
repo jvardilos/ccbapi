@@ -7,5 +7,5 @@ func Authorize(c *Credentials) (*Token, error) {
 }
 
 func Call(method, query string, t *Token, c *Credentials) ([]byte, error) {
-	return call(method, query, t, c, http.DefaultClient)
+	return call(method, query, nil, t, c, http.DefaultClient)
 }

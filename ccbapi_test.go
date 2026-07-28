@@ -28,7 +28,7 @@ func TestCall_Success(t *testing.T) {
 
 	token := &Token{AccessToken: "token", ExpiresIn: 9999999999}
 	creds := &Credentials{}
-	body, err := call("GET", "test", token, creds, client)
+	body, err := call("GET", "test", nil, token, creds, client)
 	if err != nil || string(body) != `{"success":true}` {
 		t.Fatalf("expected success, got error: %v, body: %s", err, string(body))
 	}
@@ -42,7 +42,7 @@ func TestCall_RequestError(t *testing.T) {
 	}
 	token := &Token{AccessToken: "token", ExpiresIn: 9999999999}
 	creds := &Credentials{}
-	_, err := call("GET", "test", token, creds, client)
+	_, err := call("GET", "test", nil, token, creds, client)
 	if err == nil || err.Error() != "request failed" {
 		t.Fatalf("expected request error, got: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestCall_BadStatus(t *testing.T) {
 	}
 	token := &Token{AccessToken: "token", ExpiresIn: 9999999999}
 	creds := &Credentials{}
-	_, err := call("GET", "test", token, creds, client)
+	_, err := call("GET", "test", nil, token, creds, client)
 	if err == nil || err.Error() != "status: 401 Unauthorized, body unauthorized" {
 		t.Fatalf("expected unauthorized error, got: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestCall_BodyReadError(t *testing.T) {
 	}
 	token := &Token{AccessToken: "token", ExpiresIn: 9999999999}
 	creds := &Credentials{}
-	_, err := call("GET", "test", token, creds, client)
+	_, err := call("GET", "test", nil, token, creds, client)
 	if err == nil || err.Error() != "forced read error" {
 		t.Fatalf("expected body read error, got: %v", err)
 	}
