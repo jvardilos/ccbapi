@@ -117,3 +117,26 @@ func TestCall_BadStatusIsAPIError(t *testing.T) {
 		t.Fatalf("error message changed: %q", err.Error())
 	}
 }
+
+func TestCall_SendsBodyAndAccepts201(t *testing.T) {
+	var gotBody, gotType, gotMethod string
+	client := &mockClient{
+		doFunc: func(req *http.Request) (*http.Response, error) {
+			b, _ := io.ReadAll(req.Body)
+			gotBody, gotType, gotMethod = string(b), req.Header.Get("Content-Type"), req.Method
+			return &http.Response{
+				StatusCode: 201,
+				Status:     "201 Created",
+				Body:       io.NopCloser(bytes.NewBufferString(`{"id":9}`)),
+			}, nil
+		},
+	}
+	token := &Token{AccessToken: "token", ExpiresIn: 9999999999}
+	out, err := call("POST", "forms/1/responses", bytes.NewBufferString(`{"a":1}`), token, &Credentials{}, client)
+	if err != nil {
+		t.Fatalf("expected 201 to succeed, got: %v", err)
+	}
+	if string(out) != `{"id":9}` || gotBody != `{"a":1}` || gotType != "application/json" || gotMethod != "POST" {
+		t.Fatalf("unexpected: out=%s body=%s type=%s method=%s", out, gotBody, gotType, gotMethod)
+	}
+}
