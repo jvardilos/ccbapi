@@ -92,3 +92,28 @@ func (b badReader) Read(p []byte) (n int, err error) {
 func (b badReader) Close() error {
 	return nil
 }
+
+func TestCall_BadStatusIsAPIError(t *testing.T) {
+	client := &mockClient{
+		doFunc: func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 400,
+				Status:     "400 Bad Request",
+				Body:       io.NopCloser(bytes.NewBufferString("[]")),
+			}, nil
+		},
+	}
+	token := &Token{AccessToken: "token", ExpiresIn: 9999999999}
+	_, err := call("GET", "test", nil, token, &Credentials{}, client)
+
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		t.Fatalf("expected *APIError, got %T: %v", err, err)
+	}
+	if apiErr.StatusCode != 400 || apiErr.Status != "400 Bad Request" || string(apiErr.Body) != "[]" {
+		t.Fatalf("unexpected APIError fields: %+v", apiErr)
+	}
+	if err.Error() != "status: 400 Bad Request, body []" {
+		t.Fatalf("error message changed: %q", err.Error())
+	}
+}
