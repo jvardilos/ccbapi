@@ -40,7 +40,7 @@ func call(method, query string, body io.Reader, t *Token, c *Credentials, client
 		return nil, err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		logger.Error("ccb api request rejected", "status", resp.Status, "query", query)
 		return nil, &APIError{StatusCode: resp.StatusCode, Status: resp.Status, Body: respBody}
 	}
