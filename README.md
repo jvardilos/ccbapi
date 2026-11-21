@@ -21,29 +21,29 @@ go get github.com/jvardilos/ccbapi@latest
 package main
 
 import (
-	"fmt"
-	"github.com/jvardilos/ccbapi"
+ "fmt"
+ "github.com/jvardilos/ccbapi"
 )
 
 func CCB() error {
-	c := ccbapi.Credentials{
-		Subdomain: "yourchurch",
-		Client:    "your_client_id",
-		Secret:    "your_client_secret",
-	}
+ c := ccbapi.Credentials{
+  Subdomain: "yourchurch",
+  Client:    "your_client_id",
+  Secret:    "your_client_secret",
+ }
 
-	t, err := ccbapi.Auth(&c)
-	if err != nil {
-		return err
-	}
+ t, err := ccbapi.Auth(&c)
+ if err != nil {
+  return err
+ }
 
-	body, err := ccbapi.Call("GET", "individuals", t, &c)
-	if err != nil {
-		return err
-	}
+ body, err := ccbapi.Call("GET", "individuals", t, &c)
+ if err != nil {
+  return err
+ }
 
-	fmt.Println(string(body)) // or json.Unmarshal if you'd like
-	return nil
+ fmt.Println(string(body)) // or json.Unmarshal if you'd like
+ return nil
 }
 ```
 
