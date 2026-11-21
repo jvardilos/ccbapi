@@ -1,7 +1,6 @@
 package ccbapi
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 )
@@ -43,7 +42,7 @@ func call(method, query string, body io.Reader, t *Token, c *Credentials, client
 
 	if resp.StatusCode != 200 {
 		logger.Error("ccb api request rejected", "status", resp.Status, "query", query)
-		return nil, fmt.Errorf("status: %s, body %s", resp.Status, respBody)
+		return nil, &APIError{StatusCode: resp.StatusCode, Status: resp.Status, Body: respBody}
 	}
 
 	return respBody, nil
